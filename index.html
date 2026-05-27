@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>osu! Stream Speed Benchmark</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+*{
+    box-sizing:border-box;
+    user-select:none;
+}
+
+body{
+    margin:0;
+    overflow:hidden;
+    font-family:'Inter',sans-serif;
+    background:
+    radial-gradient(circle at top,#ff66aa22 0%,transparent 35%),
+    linear-gradient(135deg,#151520,#09090f);
+    color:white;
+}
+
+.bg{
+    position:fixed;
+    inset:0;
+
+    background:
+    repeating-linear-gradient(
+        45deg,
+        transparent 0px,
+        transparent 35px,
+        rgba(255,255,255,.015) 35px,
+        rgba(255,255,255,.015) 70px
+    );
+
+    background-size:200px 200px;
+
+    animation:bgMove 8s linear infinite;
+}
+
+@keyframes bgMove{
+
+    from{
+        background-position:0 0;
+    }
+
+    to{
+        background-position:200px 0;
+    }
+}
+
+.container{
+    position:relative;
+    z-index:2;
+
+    height:100vh;
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+
+    gap:20px;
+
+    padding:20px;
+}
+
+.title{
+    font-size:54px;
+    font-weight:800;
+    color:#ff66aa;
+    text-shadow:0 0 25px #ff66aa99;
+}
+
+.main-bpm{
+    font-size:100px;
+    font-weight:800;
+    line-height:1;
+    transition:.05s;
+}
+
+.pulse{
+    transform:scale(1.04);
+}
+
+.bar{
+    width:700px;
+    max-width:95vw;
+    height:18px;
+    border-radius:999px;
+    overflow:hidden;
+    background:rgba(255,255,255,.08);
+}
+
+.fill{
+    width:0%;
+    height:100%;
+    transition:.05s linear;
+    background:linear-gradient(90deg,#ff66aa,#66ccff);
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:15px;
+
+    width:950px;
+    max-width:95vw;
+}
+
+.card{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.05);
+
+    border-radius:22px;
+
+    padding:18px;
+
+    backdrop-filter:blur(15px);
+
+    text-align:center;
+}
+
+.label{
+    opacity:.7;
+    margin-bottom:10px;
+}
+
+.value{
+    font-size:28px;
+    font-weight:700;
+}
+
+.controls{
+    width:1150px;
+    max-width:95vw;
+
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+
+    gap:12px;
+
+    background:rgba(255,255,255,.05);
+
+    padding:18px;
+
+    border-radius:24px;
+
+    backdrop-filter:blur(15px);
+}
+
+.control{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+input,select,button{
+    border:none;
+    outline:none;
+
+    border-radius:14px;
+
+    padding:10px 14px;
+
+    font-size:15px;
+}
+
+input,select{
+    background:#ffffff11;
+    color:white;
+}
+
+button{
+    background:#ff66aa;
+    color:white;
+
+    cursor:pointer;
+
+    font-weight:700;
+
+    transition:.15s;
+}
+
+button:hover{
+    transform:scale(1.05);
+}
+
+canvas{
+    width:950px;
+    max-width:95vw;
+
+    height:180px;
+
+    border-radius:22px;
+
+    background:rgba(255,255,255,.04);
+
+    border:1px solid rgba(255,255,255,.05);
+}
+
+.status{
+    opacity:.8;
+    font-size:18px;
+}
+
+.leaderboard{
+    position:fixed;
+
+    top:20px;
+    right:20px;
+
+    width:260px;
+
+    background:rgba(255,255,255,.06);
+
+    border-radius:24px;
+
+    padding:18px;
+
+    backdrop-filter:blur(15px);
+}
+
+.lb-title{
+    color:#ff66aa;
+    font-weight:800;
+    margin-bottom:12px;
+}
+
+.lb-item{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:8px;
+}
+
+#tooltip{
+    position:fixed;
+
+    pointer-events:none;
+
+    background:#111;
+
+    border:1px solid #ffffff22;
+
+    padding:10px 14px;
+
+    border-radius:14px;
+
+    font-size:14px;
+
+    opacity:0;
+
+    transition:.08s;
+
+    backdrop-filter:blur(10px);
+
+    z-index:999;
+}
+</style>
+</head>
+
+<body>
+
+<div class="bg"></div>
+
+<div class="leaderboard">
+
+    <div class="lb-title">
+        LOCAL RECORDS
+    </div>
+
+    <div id="leaderboard"></div>
+
+</div>
+
+<div id="tooltip"></div>
+
+<div class="container">
+
+    <div class="title">
+        osu! Stream Speed Benchmark
+    </div>
+
+    <div class="main-bpm" id="bpm">
+        0 BPM
+    </div>
+
+    <div class="bar">
+        <div class="fill" id="fill"></div>
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="label">CLICKS</div>
+            <div class="value" id="clicks">0</div>
+        </div>
+
+        <div class="card">
+            <div class="label">CPS</div>
+            <div class="value" id="cps">0</div>
+        </div>
+
+        <div class="card">
+            <div class="label">UR</div>
+            <div class="value" id="ur">0</div>
+        </div>
+
+        <div class="card">
+            <div class="label">PEAK BPM</div>
+            <div class="value" id="peak">0</div>
+        </div>
+
+        <div class="card">
+            <div class="label">CHEAT?</div>
+            <div class="value" id="cheat">NO</div>
+        </div>
+
+    </div>
+
+    <canvas
+        id="graph"
+        width="950"
+        height="180"
+    ></canvas>
+
+    <div class="controls">
+
+        <div class="control">
+            <label>Play Mode</label>
+
+            <select id="mode">
+                <option value="alternate">
+                    Alternate
+                </option>
+
+                <option value="singletap">
+                    Singletap
+                </option>
+            </select>
+        </div>
+
+        <div class="control">
+            <label>Test Type</label>
+
+            <select id="testType">
+                <option value="time">
+                    Time
+                </option>
+
+                <option value="clicks">
+                    Clicks
+                </option>
+            </select>
+        </div>
+
+        <div class="control">
+            <label>Seconds</label>
+
+            <input
+                type="number"
+                id="seconds"
+                value="10"
+            >
+        </div>
+
+        <div class="control">
+            <label>Clicks</label>
+
+            <input
+                type="number"
+                id="clickLimit"
+                value="100"
+            >
+        </div>
+
+        <div class="control">
+            <label>Key 1</label>
+
+            <input
+                type="text"
+                maxlength="1"
+                id="key1"
+                value="z"
+            >
+        </div>
+
+        <div class="control">
+            <label>Key 2</label>
+
+            <input
+                type="text"
+                maxlength="1"
+                id="key2"
+                value="x"
+            >
+        </div>
+
+        <div class="control">
+            <label>Sound</label>
+
+            <select id="sound">
+                <option value="on">
+                    ON
+                </option>
+
+                <option value="off">
+                    OFF
+                </option>
+            </select>
+        </div>
+
+        <div class="control">
+            <label>&nbsp;</label>
+
+            <button onclick="startTest()">
+                START
+            </button>
+        </div>
+
+        <div class="control">
+            <label>&nbsp;</label>
+
+            <button onclick="resetTest()">
+                RESET
+            </button>
+        </div>
+
+    </div>
+
+    <div class="status" id="status">
+        READY
+    </div>
+
+</div>
+
+<script>
+const bpmEl =
+    document.getElementById("bpm");
+
+const clicksEl =
+    document.getElementById("clicks");
+
+const cpsEl =
+    document.getElementById("cps");
+
+const urEl =
+    document.getElementById("ur");
+
+const peakEl =
+    document.getElementById("peak");
+
+const cheatEl =
+    document.getElementById("cheat");
+
+const fillEl =
+    document.getElementById("fill");
+
+const statusEl =
+    document.getElementById("status");
+
+const canvas =
+    document.getElementById("graph");
+
+const ctx =
+    canvas.getContext("2d");
+
+const tooltip =
+    document.getElementById("tooltip");
+
+let clicks = 0;
+
+let peakBPM = 0;
+
+let started = false;
+let finished = false;
+
+let times = [];
+let bpms = [];
+let graphPoints = [];
+
+let startTime = 0;
+
+let lastKey = null;
+
+let singleTapKey = null;
+
+function beep(freq=1000,duration=15){
+
+    if(
+        document
+        .getElementById("sound")
+        .value === "off"
+    ) return;
+
+    const audioCtx =
+        new (
+            window.AudioContext ||
+            window.webkitAudioContext
+        )();
+
+    const osc =
+        audioCtx.createOscillator();
+
+    const gain =
+        audioCtx.createGain();
+
+    osc.connect(gain);
+
+    gain.connect(
+        audioCtx.destination
+    );
+
+    osc.frequency.value = freq;
+
+    osc.type = "square";
+
+    gain.gain.value = 0.03;
+
+    osc.start();
+
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioCtx.currentTime
+        + duration / 1000
+    );
+
+    osc.stop(
+        audioCtx.currentTime
+        + duration / 1000
+    );
+}
+
+function startTest(){
+
+    resetTest();
+
+    started = true;
+
+    finished = false;
+
+    startTime = performance.now();
+
+    statusEl.textContent =
+        "TEST RUNNING";
+}
+
+function resetTest(){
+
+    clicks = 0;
+
+    peakBPM = 0;
+
+    started = false;
+
+    finished = false;
+
+    times = [];
+
+    bpms = [];
+
+    graphPoints = [];
+
+    lastKey = null;
+
+    singleTapKey = null;
+
+    clicksEl.textContent = 0;
+
+    cpsEl.textContent = 0;
+
+    urEl.textContent = 0;
+
+    peakEl.textContent = 0;
+
+    bpmEl.textContent = "0 BPM";
+
+    cheatEl.textContent = "NO";
+
+    cheatEl.style.color = "white";
+
+    fillEl.style.width = "0%";
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    statusEl.textContent = "READY";
+}
+
+function finishTest(){
+
+    finished = true;
+
+    started = false;
+
+    saveScore();
+
+    statusEl.textContent =
+        "FINISHED";
+}
+
+function registerTap(key){
+
+    if(!started || finished)
+        return;
+
+    const mode =
+        document
+        .getElementById("mode")
+        .value;
+
+    if(mode === "alternate"){
+
+        if(lastKey === key)
+            return;
+
+        lastKey = key;
+    }
+
+    if(mode === "singletap"){
+
+        if(singleTapKey === null){
+
+            singleTapKey = key;
+        }
+
+        if(key !== singleTapKey)
+            return;
+    }
+
+    beep();
+
+    const now =
+        performance.now();
+
+    clicks++;
+
+    clicksEl.textContent =
+        clicks;
+
+    times.push(now);
+
+    if(times.length > 64)
+        times.shift();
+
+    if(times.length >= 2){
+
+        let intervals = [];
+
+        for(
+            let i = 1;
+            i < times.length;
+            i++
+        ){
+
+            intervals.push(
+                times[i]
+                - times[i - 1]
+            );
+        }
+
+        const avg =
+            intervals.reduce(
+                (a,b)=>a+b,
+                0
+            ) / intervals.length;
+
+        const cps =
+            1000 / avg;
+
+        /*
+        osu! streams:
+        1 click = 1/4 beat
+        BPM = CPS * 15
+        */
+
+        const bpm =
+            cps * 15;
+
+        peakBPM =
+            Math.max(
+                peakBPM,
+                bpm
+            );
+
+        peakEl.textContent =
+            Math.round(peakBPM);
+
+        bpmEl.textContent =
+            Math.round(bpm)
+            + " BPM";
+
+        cpsEl.textContent =
+            cps.toFixed(2);
+
+        const variance =
+            intervals.reduce(
+                (s,v)=>
+                    s +
+                    Math.pow(
+                        v-avg,
+                        2
+                    ),
+                0
+            ) / intervals.length;
+
+        const ur =
+            Math.sqrt(
+                variance
+            ) * 10;
+
+        urEl.textContent =
+            Math.round(ur);
+
+        fillEl.style.width =
+            Math.min(
+                bpm / 350 * 100,
+                100
+            ) + "%";
+
+        detectCheat(intervals);
+
+        bpms.push(bpm);
+
+        if(bpms.length > 128)
+            bpms.shift();
+
+        drawGraph();
+
+        bpmEl.classList.remove(
+            "pulse"
+        );
+
+        void bpmEl.offsetWidth;
+
+        bpmEl.classList.add(
+            "pulse"
+        );
+    }
+
+    checkEnd();
+}
+
+function detectCheat(intervals){
+
+    if(intervals.length < 12)
+        return;
+
+    const avg =
+        intervals.reduce(
+            (a,b)=>a+b,
+            0
+        ) / intervals.length;
+
+    const variance =
+        intervals.reduce(
+            (s,v)=>
+                s +
+                Math.pow(
+                    v-avg,
+                    2
+                ),
+            0
+        ) / intervals.length;
+
+    if(variance < 1.2){
+
+        cheatEl.textContent =
+            "YES";
+
+        cheatEl.style.color =
+            "#ff5555";
+
+    }else{
+
+        cheatEl.textContent =
+            "NO";
+
+        cheatEl.style.color =
+            "white";
+    }
+}
+
+function drawGraph(){
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    graphPoints = [];
+
+    if(bpms.length < 2)
+        return;
+
+    ctx.beginPath();
+
+    ctx.lineWidth = 3;
+
+    ctx.strokeStyle =
+        "#ff66aa";
+
+    bpms.forEach(
+        (bpm,index)=>{
+
+        const x =
+            index /
+            (bpms.length - 1)
+            * canvas.width;
+
+        const y =
+            canvas.height -
+            (
+                bpm / 350
+            ) * canvas.height;
+
+        graphPoints.push({
+            x,
+            y,
+            bpm:
+                Math.round(bpm),
+            click:
+                index + 1
+        });
+
+        if(index === 0){
+
+            ctx.moveTo(x,y);
+
+        }else{
+
+            ctx.lineTo(x,y);
+        }
+    });
+
+    ctx.stroke();
+
+    graphPoints.forEach(
+        point=>{
+
+        ctx.beginPath();
+
+        ctx.arc(
+            point.x,
+            point.y,
+            4,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            "#ffffff";
+
+        ctx.fill();
+    });
+}
+
+function checkEnd(){
+
+    const type =
+        document
+        .getElementById(
+            "testType"
+        )
+        .value;
+
+    if(type === "clicks"){
+
+        const limit =
+            parseInt(
+                document
+                .getElementById(
+                    "clickLimit"
+                )
+                .value
+            );
+
+        if(clicks >= limit)
+            finishTest();
+
+    }else{
+
+        const sec =
+            parseInt(
+                document
+                .getElementById(
+                    "seconds"
+                )
+                .value
+            );
+
+        const elapsed =
+            (
+                performance.now()
+                - startTime
+            ) / 1000;
+
+        if(elapsed >= sec)
+            finishTest();
+    }
+}
+
+window.addEventListener(
+    "keydown",
+    e=>{
+
+    const key1 =
+        document
+        .getElementById(
+            "key1"
+        )
+        .value
+        .toLowerCase();
+
+    const key2 =
+        document
+        .getElementById(
+            "key2"
+        )
+        .value
+        .toLowerCase();
+
+    const key =
+        e.key.toLowerCase();
+
+    if(
+        key === key1
+        ||
+        key === key2
+    ){
+
+        registerTap(key);
+    }
+});
+
+window.addEventListener(
+    "mousedown",
+    e=>{
+
+    if(e.button === 0)
+        registerTap("mouse1");
+
+    if(e.button === 2)
+        registerTap("mouse2");
+});
+
+window.addEventListener(
+    "contextmenu",
+    e=>e.preventDefault()
+);
+
+canvas.addEventListener(
+    "mousemove",
+    e=>{
+
+    const rect =
+        canvas
+        .getBoundingClientRect();
+
+    const mouseX =
+        e.clientX
+        - rect.left;
+
+    const mouseY =
+        e.clientY
+        - rect.top;
+
+    let found = false;
+
+    graphPoints.forEach(
+        point=>{
+
+        const dx =
+            mouseX - point.x;
+
+        const dy =
+            mouseY - point.y;
+
+        const dist =
+            Math.sqrt(
+                dx*dx + dy*dy
+            );
+
+        if(dist < 10){
+
+            tooltip.style.opacity =
+                1;
+
+            tooltip.style.left =
+                e.clientX
+                + 15
+                + "px";
+
+            tooltip.style.top =
+                e.clientY
+                + 15
+                + "px";
+
+            tooltip.innerHTML = `
+                <b>
+                    ${point.bpm} BPM
+                </b>
+                <br>
+                Click #${point.click}
+            `;
+
+            found = true;
+        }
+    });
+
+    if(!found){
+
+        tooltip.style.opacity =
+            0;
+    }
+});
+
+canvas.addEventListener(
+    "mouseleave",
+    ()=>{
+
+    tooltip.style.opacity = 0;
+});
+
+function saveScore(){
+
+    const score = {
+
+        bpm:
+            Math.round(
+                peakBPM
+            ),
+
+        ur:
+            urEl.textContent,
+
+        date:
+            new Date()
+            .toLocaleDateString()
+    };
+
+    let records =
+        JSON.parse(
+            localStorage.getItem(
+                "osuScores"
+            ) || "[]"
+        );
+
+    records.push(score);
+
+    records.sort(
+        (a,b)=>
+            b.bpm - a.bpm
+    );
+
+    records =
+        records.slice(0,5);
+
+    localStorage.setItem(
+        "osuScores",
+        JSON.stringify(records)
+    );
+
+    loadLeaderboard();
+}
+
+function loadLeaderboard(){
+
+    const lb =
+        document
+        .getElementById(
+            "leaderboard"
+        );
+
+    lb.innerHTML = "";
+
+    let records =
+        JSON.parse(
+            localStorage.getItem(
+                "osuScores"
+            ) || "[]"
+        );
+
+    records.forEach(
+        (r,index)=>{
+
+        const div =
+            document
+            .createElement("div");
+
+        div.className =
+            "lb-item";
+
+        div.innerHTML = `
+            <span>
+                #${index+1}
+            </span>
+
+            <span>
+                ${r.bpm} BPM
+            </span>
+        `;
+
+        lb.appendChild(div);
+    });
+}
+
+loadLeaderboard();
+</script>
+
+</body>
+</html>
